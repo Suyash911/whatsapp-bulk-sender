@@ -1,0 +1,10 @@
+node_modules/
+uploads/*
+reports/*
+sessions/*
+data/*
+!uploads/.gitkeep
+!reports/.gitkeep
+!sessions/.gitkeep
+!data/.gitkeep
+.env

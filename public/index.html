@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WhatsApp Bulk Sender</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <aside class="sidebar">
+        <div>
+          <p class="eyebrow">Multi account</p>
+          <h1>WhatsApp Bulk Sender</h1>
+        </div>
+
+        <section class="side-panel">
+          <div class="metric">
+            <span>Accounts</span>
+            <strong id="accountCount">0</strong>
+          </div>
+          <div class="metric sent">
+            <span>Linked</span>
+            <strong id="linkedCount">0</strong>
+          </div>
+          <div class="metric">
+            <span>Active Jobs</span>
+            <strong id="activeJobCount">0</strong>
+          </div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <nav class="tabs" aria-label="Views">
+          <button class="tab active" type="button" data-tab="accounts">Accounts</button>
+          <button class="tab" type="button" data-tab="broadcasts">Broadcasts</button>
+          <button class="tab" type="button" data-tab="reports">Reports</button>
+        </nav>
+
+        <section id="accountsTab" class="tab-page active">
+          <form id="accountForm" class="panel">
+            <div class="panel-head">
+              <h2>Add WhatsApp Account</h2>
+              <button type="submit">Add Account</button>
+            </div>
+            <label>
+              Account name
+              <input name="name" placeholder="Sales 1" required />
+            </label>
+          </form>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Saved Accounts</h2>
+              <span class="muted">Scan once, then reuse later</span>
+            </div>
+            <div id="accountsList" class="cards"></div>
+          </section>
+        </section>
+
+        <section id="broadcastsTab" class="tab-page">
+          <form id="draftForm" class="panel">
+            <div class="panel-head">
+              <h2>Prepare Broadcast</h2>
+              <button type="submit">Upload Contacts</button>
+            </div>
+            <div class="grid two">
+              <label>
+                Excel file
+                <input name="excel" type="file" accept=".xlsx,.xls,.csv" required />
+              </label>
+              <label>
+                Media
+                <input name="media" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" />
+              </label>
+            </div>
+          </form>
+
+          <form id="broadcastForm" class="panel">
+            <div class="panel-head">
+              <h2>Broadcast Message</h2>
+              <button id="startBroadcast" type="submit">Start Broadcast</button>
+            </div>
+            <div class="grid three">
+              <label>
+                Broadcast name
+                <input name="name" value="Broadcast" />
+              </label>
+              <label>
+                WhatsApp account
+                <select id="accountSelect" name="accountId"></select>
+              </label>
+              <label>
+                Phone column
+                <select id="phoneColumn" name="phoneColumn"></select>
+              </label>
+            </div>
+            <div class="grid three">
+              <label>
+                Country code
+                <input name="defaultCountryCode" value="91" inputmode="numeric" />
+              </label>
+              <label>
+                Delay seconds
+                <div class="delay-row">
+                  <input name="minDelaySeconds" type="number" min="1" step="1" value="8" />
+                  <input name="maxDelaySeconds" type="number" min="1" step="1" value="15" />
+                </div>
+              </label>
+              <label>
+                Schedule time
+                <input name="scheduledAt" type="datetime-local" />
+              </label>
+            </div>
+            <label>
+              Message
+              <textarea name="message" rows="8" placeholder="Hi {Name}, your message here"></textarea>
+            </label>
+            <label class="check">
+              <input name="consentConfirmed" type="checkbox" required />
+              <span>These contacts opted in to receive this message.</span>
+            </label>
+          </form>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Preview</h2>
+              <span id="previewMeta" class="muted">No file uploaded</span>
+            </div>
+            <div class="table-wrap">
+              <table id="previewTable"></table>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Broadcast Jobs</h2>
+              <span class="muted">Different accounts can run at the same time</span>
+            </div>
+            <div id="broadcastList" class="cards"></div>
+          </section>
+        </section>
+
+        <section id="reportsTab" class="tab-page">
+          <section class="panel">
+            <div class="panel-head">
+              <h2>Reports</h2>
+              <button id="refreshReports" type="button" class="secondary">Refresh</button>
+            </div>
+            <div id="reportsList" class="reports-list"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
