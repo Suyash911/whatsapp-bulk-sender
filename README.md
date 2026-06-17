@@ -18,6 +18,27 @@ Open `http://localhost:3000`.
 
 Do not deploy this app to Vercel as a serverless function. It runs WhatsApp Web through Puppeteer, keeps a live Socket.IO connection, writes upload/report/session files, and needs an always-on Node process with persistent storage.
 
+### Vercel
+
+This repo includes `vercel.json` so the project can deploy to Vercel without crashing. On Vercel, the static UI loads and `/api/*` is routed to the Express function, but WhatsApp Web automation is disabled because Vercel Functions cannot keep the persistent Chromium session that sending requires.
+
+To deploy:
+
+1. Push this project to GitHub.
+2. Import the repo in Vercel.
+3. Use these settings:
+
+```text
+Framework Preset: Other
+Install Command: PUPPETEER_SKIP_DOWNLOAD=true npm ci
+Build Command: leave empty
+Output Directory: leave empty
+```
+
+4. Deploy.
+
+If you need actual QR login and message sending, host the backend on Render/Railway/VPS and use Vercel only for a frontend.
+
 ### Render
 
 This repo includes a `Dockerfile` and `render.yaml` for Render.

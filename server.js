@@ -6,11 +6,13 @@ const multer = require("multer");
 const ExcelJS = require("exceljs");
 const QRCode = require("qrcode");
 const { Server } = require("socket.io");
-const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
+const IS_VERCEL = process.env.VERCEL === "1";
+const whatsapp = IS_VERCEL ? {} : require("whatsapp-web.js");
+const { Client, LocalAuth, MessageMedia } = whatsapp;
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const STORAGE_ROOT = process.env.STORAGE_ROOT || ROOT;
+const STORAGE_ROOT = process.env.STORAGE_ROOT || (IS_VERCEL ? "/tmp/whatsapp-bulk-sender" : ROOT);
 const UPLOAD_DIR = path.join(STORAGE_ROOT, "uploads");
 const REPORT_DIR = path.join(STORAGE_ROOT, "reports");
 const SESSION_DIR = path.join(STORAGE_ROOT, "sessions");
@@ -52,6 +54,8 @@ app.get("/api/accounts", (_req, res) => {
 });
 
 app.post("/api/accounts", (req, res) => {
+  if (IS_VERCEL) return vercelUnsupported(res);
+
   const name = String(req.body?.name || "").trim();
   if (!name) {
     return res.status(400).json({ error: "Account name is required." });
@@ -71,6 +75,8 @@ app.post("/api/accounts", (req, res) => {
 });
 
 app.post("/api/accounts/:id/refresh", async (req, res) => {
+  if (IS_VERCEL) return vercelUnsupported(res);
+
   const account = getAccount(req.params.id);
   if (!account) {
     return res.status(404).json({ error: "Account not found." });
@@ -86,6 +92,8 @@ app.post("/api/accounts/:id/refresh", async (req, res) => {
 });
 
 app.delete("/api/accounts/:id", async (req, res) => {
+  if (IS_VERCEL) return vercelUnsupported(res);
+
   const account = getAccount(req.params.id);
   if (!account) {
     return res.status(404).json({ error: "Account not found." });
@@ -120,6 +128,8 @@ app.post(
     { name: "media", maxCount: 1 }
   ]),
   async (req, res) => {
+    if (IS_VERCEL) return vercelUnsupported(res);
+
     const excel = req.files?.excel?.[0];
     const media = req.files?.media?.[0] || null;
     if (!excel) {
@@ -154,6 +164,8 @@ app.get("/api/draft", (_req, res) => {
 });
 
 app.post("/api/broadcasts", (req, res) => {
+  if (IS_VERCEL) return vercelUnsupported(res);
+
   if (!currentDraft) {
     return res.status(400).json({ error: "Upload an Excel file first." });
   }
@@ -215,6 +227,8 @@ app.post("/api/broadcasts", (req, res) => {
 });
 
 app.post("/api/broadcasts/:id/stop", (req, res) => {
+  if (IS_VERCEL) return vercelUnsupported(res);
+
   const broadcast = broadcasts.get(req.params.id);
   if (!broadcast) {
     return res.status(404).json({ error: "Broadcast not found." });
@@ -425,6 +439,8 @@ function finishBroadcast(broadcast, report, status, error) {
 }
 
 function startAccountClient(accountId) {
+  if (IS_VERCEL) return;
+
   const existing = clients.get(accountId);
   if (existing?.starting || existing?.ready) return;
 
@@ -757,6 +773,12 @@ function saveAccounts() {
   fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2));
 }
 
+function vercelUnsupported(res) {
+  return res.status(503).json({
+    error: "This WhatsApp Web sender cannot run on Vercel Functions. The UI can be deployed on Vercel, but sending requires an always-on Node server with persistent storage."
+  });
+}
+
 function uniqueId(prefix) {
   const base = sanitizeId(prefix) || "item";
   return `${base}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -782,6 +804,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-server.listen(PORT, () => {
-  console.log(`WhatsApp bulk sender running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`WhatsApp bulk sender running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

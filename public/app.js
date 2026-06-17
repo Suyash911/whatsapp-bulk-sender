@@ -1,4 +1,4 @@
-const socket = io();
+const socket = window.io ? io() : null;
 
 const accountForm = document.getElementById("accountForm");
 const draftForm = document.getElementById("draftForm");
@@ -29,19 +29,21 @@ document.querySelectorAll(".tab").forEach((button) => {
   });
 });
 
-socket.on("accounts", (items) => {
-  accounts = items;
-  renderAccounts();
-  renderAccountSelect();
-  renderSidebar();
-});
+if (socket) {
+  socket.on("accounts", (items) => {
+    accounts = items;
+    renderAccounts();
+    renderAccountSelect();
+    renderSidebar();
+  });
 
-socket.on("broadcasts", (items) => {
-  broadcasts = items;
-  renderBroadcasts();
-  renderSidebar();
-  loadReports();
-});
+  socket.on("broadcasts", (items) => {
+    broadcasts = items;
+    renderBroadcasts();
+    renderSidebar();
+    loadReports();
+  });
+}
 
 accountForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -278,6 +280,31 @@ async function loadReports() {
   }
 }
 
+async function loadAccounts() {
+  try {
+    const response = await fetch("/api/accounts");
+    const data = await readJson(response);
+    accounts = data.accounts || [];
+    renderAccounts();
+    renderAccountSelect();
+    renderSidebar();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function loadBroadcasts() {
+  try {
+    const response = await fetch("/api/broadcasts");
+    const data = await readJson(response);
+    broadcasts = data.broadcasts || [];
+    renderBroadcasts();
+    renderSidebar();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
 async function readJson(response) {
   const contentType = response.headers.get("content-type") || "";
   const text = await response.text();
@@ -315,4 +342,13 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.add("hidden"), 4200);
 }
 
+loadAccounts();
+loadBroadcasts();
 loadReports();
+
+if (!socket) {
+  setInterval(() => {
+    loadAccounts();
+    loadBroadcasts();
+  }, 10000);
+}
