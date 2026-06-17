@@ -10,10 +10,11 @@ const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
-const UPLOAD_DIR = path.join(ROOT, "uploads");
-const REPORT_DIR = path.join(ROOT, "reports");
-const SESSION_DIR = path.join(ROOT, "sessions");
-const DATA_DIR = path.join(ROOT, "data");
+const STORAGE_ROOT = process.env.STORAGE_ROOT || ROOT;
+const UPLOAD_DIR = path.join(STORAGE_ROOT, "uploads");
+const REPORT_DIR = path.join(STORAGE_ROOT, "reports");
+const SESSION_DIR = path.join(STORAGE_ROOT, "sessions");
+const DATA_DIR = path.join(STORAGE_ROOT, "data");
 const ACCOUNTS_FILE = path.join(DATA_DIR, "accounts.json");
 
 for (const dir of [UPLOAD_DIR, REPORT_DIR, SESSION_DIR, DATA_DIR]) {
@@ -444,8 +445,15 @@ function startAccountClient(accountId) {
       dataPath: SESSION_DIR
     }),
     puppeteer: {
-      headless: false,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      headless: process.env.PUPPETEER_HEADLESS !== "false",
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+        "--no-zygote"
+      ]
     }
   });
   state.client = client;

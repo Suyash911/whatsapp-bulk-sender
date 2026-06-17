@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.git
+.env
+server.log
+server.err
+uploads/*
+reports/*
+sessions/*
+data/*
+!uploads/.gitkeep
+!reports/.gitkeep
+!sessions/.gitkeep
+!data/.gitkeep

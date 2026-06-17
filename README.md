@@ -14,6 +14,35 @@ npm.cmd start
 
 Open `http://localhost:3000`.
 
+## Deploying
+
+Do not deploy this app to Vercel as a serverless function. It runs WhatsApp Web through Puppeteer, keeps a live Socket.IO connection, writes upload/report/session files, and needs an always-on Node process with persistent storage.
+
+### Render
+
+This repo includes a `Dockerfile` and `render.yaml` for Render.
+
+1. Push this project to GitHub.
+2. Open Render and create a new **Blueprint** from the repository.
+3. Render will use `render.yaml` to create a Docker web service.
+4. Confirm the persistent disk is mounted at:
+
+```text
+/var/data
+```
+
+5. Deploy the service.
+6. Open the Render URL, go to **Accounts**, add an account, and scan the WhatsApp QR code.
+
+The app stores production runtime data under `STORAGE_ROOT`, which defaults to the project folder locally and is set to `/var/data` on Render. This keeps these folders persistent in production:
+
+```text
+uploads
+reports
+sessions
+data
+```
+
 ## Accounts
 
 1. Go to **Accounts**.

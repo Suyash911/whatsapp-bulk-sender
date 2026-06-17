@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: whatsapp-bulk-sender
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORAGE_ROOT
+        value: /var/data
+      - key: PUPPETEER_HEADLESS
+        value: "true"
+    disk:
+      name: whatsapp-bulk-sender-data
+      mountPath: /var/data
+      sizeGB: 5
