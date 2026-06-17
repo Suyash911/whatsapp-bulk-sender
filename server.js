@@ -25,10 +25,30 @@ for (const dir of [UPLOAD_DIR, REPORT_DIR, SESSION_DIR, DATA_DIR]) {
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const allowedOrigins = parseOrigins(process.env.CORS_ORIGIN);
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins || true,
+    methods: ["GET", "POST", "DELETE"]
+  }
+});
 const upload = multer({
   dest: UPLOAD_DIR,
   limits: { fileSize: 30 * 1024 * 1024 }
+});
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && isOriginAllowed(origin, allowedOrigins)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
 });
 
 app.use(express.json({ limit: "2mb" }));
@@ -47,6 +67,12 @@ for (const account of accounts) {
 io.on("connection", (socket) => {
   socket.emit("accounts", accountSnapshots());
   socket.emit("broadcasts", broadcastSnapshots());
+});
+
+app.get("/api/config", (_req, res) => {
+  res.json({
+    apiBaseUrl: cleanBaseUrl(process.env.PUBLIC_BACKEND_URL || process.env.BACKEND_URL || "")
+  });
 });
 
 app.get("/api/accounts", (_req, res) => {
@@ -777,6 +803,23 @@ function vercelUnsupported(res) {
   return res.status(503).json({
     error: "This WhatsApp Web sender cannot run on Vercel Functions. The UI can be deployed on Vercel, but sending requires an always-on Node server with persistent storage."
   });
+}
+
+function parseOrigins(value) {
+  const origins = String(value || "")
+    .split(",")
+    .map((origin) => cleanBaseUrl(origin))
+    .filter(Boolean);
+  return origins.length ? origins : null;
+}
+
+function isOriginAllowed(origin, allowedOrigins) {
+  if (!allowedOrigins) return true;
+  return allowedOrigins.includes(cleanBaseUrl(origin));
+}
+
+function cleanBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
 }
 
 function uniqueId(prefix) {

@@ -37,7 +37,23 @@ Output Directory: leave empty
 
 4. Deploy.
 
-If you need actual QR login and message sending, host the backend on Render/Railway/VPS and use Vercel only for a frontend.
+If you need actual QR login and message sending, host the backend on Render/Railway/VPS and use Vercel only for the frontend.
+
+After your backend is deployed, add this environment variable in Vercel:
+
+```text
+PUBLIC_BACKEND_URL=https://your-backend-url.example.com
+```
+
+Redeploy Vercel after setting it. The Vercel UI will then call the always-on backend for accounts, QR login, uploads, broadcasts, Socket.IO updates, and report downloads.
+
+On the backend host, set `CORS_ORIGIN` to your Vercel app URL if you want to restrict browser access:
+
+```text
+CORS_ORIGIN=https://your-vercel-app.vercel.app
+```
+
+If `CORS_ORIGIN` is not set, the backend accepts browser requests from any origin.
 
 ### Render
 

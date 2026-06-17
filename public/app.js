@@ -1,5 +1,3 @@
-const socket = window.io ? io() : null;
-
 const accountForm = document.getElementById("accountForm");
 const draftForm = document.getElementById("draftForm");
 const broadcastForm = document.getElementById("broadcastForm");
@@ -19,6 +17,8 @@ const activeJobCount = document.getElementById("activeJobCount");
 let accounts = [];
 let broadcasts = [];
 let toastTimer = null;
+let apiBaseUrl = "";
+let socket = null;
 
 document.querySelectorAll(".tab").forEach((button) => {
   button.addEventListener("click", () => {
@@ -29,28 +29,12 @@ document.querySelectorAll(".tab").forEach((button) => {
   });
 });
 
-if (socket) {
-  socket.on("accounts", (items) => {
-    accounts = items;
-    renderAccounts();
-    renderAccountSelect();
-    renderSidebar();
-  });
-
-  socket.on("broadcasts", (items) => {
-    broadcasts = items;
-    renderBroadcasts();
-    renderSidebar();
-    loadReports();
-  });
-}
-
 accountForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(accountForm);
 
   try {
-    const response = await fetch("/api/accounts", {
+    const response = await fetch(apiUrl("/api/accounts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: formData.get("name") })
@@ -68,7 +52,7 @@ draftForm.addEventListener("submit", async (event) => {
   const formData = new FormData(draftForm);
 
   try {
-    const response = await fetch("/api/draft", {
+    const response = await fetch(apiUrl("/api/draft"), {
       method: "POST",
       body: formData
     });
@@ -96,7 +80,7 @@ broadcastForm.addEventListener("submit", async (event) => {
   };
 
   try {
-    const response = await fetch("/api/broadcasts", {
+    const response = await fetch(apiUrl("/api/broadcasts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -141,7 +125,7 @@ function renderAccounts() {
     button.addEventListener("click", async () => {
       button.disabled = true;
       try {
-        const response = await fetch(`/api/accounts/${button.dataset.id}/refresh`, { method: "POST" });
+        const response = await fetch(apiUrl(`/api/accounts/${button.dataset.id}/refresh`), { method: "POST" });
         const data = await readJson(response);
         showToast(data.message || "QR refresh started.");
       } catch (error) {
@@ -162,7 +146,7 @@ function renderAccounts() {
 
       button.disabled = true;
       try {
-        const response = await fetch(`/api/accounts/${button.dataset.id}`, { method: "DELETE" });
+        const response = await fetch(apiUrl(`/api/accounts/${button.dataset.id}`), { method: "DELETE" });
         await readJson(response);
         showToast(`Deleted ${account.name}.`);
       } catch (error) {
@@ -218,7 +202,7 @@ function renderBroadcasts() {
       </div>
       <div class="card-actions">
         ${["scheduled", "running"].includes(job.status) ? `<button class="secondary stop-job" type="button" data-id="${job.id}">Stop</button>` : ""}
-        ${job.reportUrl ? `<a href="${job.reportUrl}" download>Download report</a>` : ""}
+        ${job.reportUrl ? `<a href="${apiUrl(job.reportUrl)}" download>Download report</a>` : ""}
       </div>
     `;
     broadcastList.appendChild(card);
@@ -226,7 +210,7 @@ function renderBroadcasts() {
 
   broadcastList.querySelectorAll(".stop-job").forEach((button) => {
     button.addEventListener("click", async () => {
-      await fetch(`/api/broadcasts/${button.dataset.id}/stop`, { method: "POST" });
+      await fetch(apiUrl(`/api/broadcasts/${button.dataset.id}/stop`), { method: "POST" });
       showToast("Broadcast stop requested.");
     });
   });
@@ -260,7 +244,7 @@ function renderSidebar() {
 
 async function loadReports() {
   try {
-    const response = await fetch("/api/reports");
+    const response = await fetch(apiUrl("/api/reports"));
     const data = await readJson(response);
     reportsList.innerHTML = "";
     if (!data.files.length) {
@@ -270,7 +254,7 @@ async function loadReports() {
 
     for (const file of data.files) {
       const link = document.createElement("a");
-      link.href = file.url;
+      link.href = apiUrl(file.url);
       link.download = file.name;
       link.textContent = `${file.name} (${new Date(file.createdAt).toLocaleString()})`;
       reportsList.appendChild(link);
@@ -282,7 +266,7 @@ async function loadReports() {
 
 async function loadAccounts() {
   try {
-    const response = await fetch("/api/accounts");
+    const response = await fetch(apiUrl("/api/accounts"));
     const data = await readJson(response);
     accounts = data.accounts || [];
     renderAccounts();
@@ -295,7 +279,7 @@ async function loadAccounts() {
 
 async function loadBroadcasts() {
   try {
-    const response = await fetch("/api/broadcasts");
+    const response = await fetch(apiUrl("/api/broadcasts"));
     const data = await readJson(response);
     broadcasts = data.broadcasts || [];
     renderBroadcasts();
@@ -342,13 +326,80 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.add("hidden"), 4200);
 }
 
-loadAccounts();
-loadBroadcasts();
-loadReports();
-
-if (!socket) {
-  setInterval(() => {
-    loadAccounts();
-    loadBroadcasts();
-  }, 10000);
+function apiUrl(path) {
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+async function loadClientConfig() {
+  if (window.WHATSAPP_API_BASE_URL) {
+    apiBaseUrl = cleanBaseUrl(window.WHATSAPP_API_BASE_URL);
+    return;
+  }
+
+  try {
+    const response = await fetch("/api/config");
+    const data = await readJson(response);
+    apiBaseUrl = cleanBaseUrl(data.apiBaseUrl || "");
+  } catch (_error) {
+    apiBaseUrl = "";
+  }
+}
+
+function cleanBaseUrl(value) {
+  return String(value || "").trim().replace(/\/+$/, "");
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function connectSocket() {
+  try {
+    if (!window.io) {
+      await loadScript(apiUrl("/socket.io/socket.io.js"));
+    }
+
+    socket = window.io(apiBaseUrl || undefined, {
+      transports: ["websocket", "polling"]
+    });
+
+    socket.on("accounts", (items) => {
+      accounts = items;
+      renderAccounts();
+      renderAccountSelect();
+      renderSidebar();
+    });
+
+    socket.on("broadcasts", (items) => {
+      broadcasts = items;
+      renderBroadcasts();
+      renderSidebar();
+      loadReports();
+    });
+  } catch (_error) {
+    socket = null;
+  }
+}
+
+async function init() {
+  await loadClientConfig();
+  await connectSocket();
+  await Promise.all([loadAccounts(), loadBroadcasts(), loadReports()]);
+
+  if (!socket) {
+    setInterval(() => {
+      loadAccounts();
+      loadBroadcasts();
+    }, 10000);
+  }
+}
+
+init();
